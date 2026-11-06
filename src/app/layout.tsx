@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://rltrading.vercel.app'),
   title: "RL Trading & SEat n Go Shuttle Services | Angeles City, Pampanga",
   description:
     "Quality pre-owned vehicle dealership and shuttle services along MacArthur Highway, Pulung Bulu, Angeles City, Pampanga.",

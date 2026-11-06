@@ -1,18 +1,16 @@
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAvailableUnits, getUnitByIdOrSlug } from '@/lib/services/vehicleService';
 import { formatPHP } from '@/lib/calculator';
 import PhotoGallery from '@/components/PhotoGallery';
 import CopyInquiryButton from '@/components/CopyInquiryButton';
+import type { UnitStatus } from '@/types/database';
 import {
   Car,
   ChevronLeft,
   MapPin,
   Phone,
-  ShieldCheck,
-  CheckCircle2,
   Tag,
   Clock,
   ExternalLink,
@@ -46,8 +44,29 @@ function getCodingDay(plateEnding: string): string {
   }
 }
 
+function getStatusBadgeStyle(status: UnitStatus) {
+  switch (status) {
+    case 'Available':
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    case 'Pending':
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    case 'Sold':
+      return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+    default:
+      return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+  }
+}
+
 export async function generateStaticParams() {
   const units = await getAvailableUnits();
+  if (units.length === 0) {
+    // Return sample slugs for build-time validation under Cache Components when building without a live database
+    return [
+      { slug: '2019-toyota-hilux-2-4-g-conquest-at' },
+      { slug: '2014-nissan-teana-2-5-v6-at' },
+      { slug: '2018-toyota-vios-1-3-e-at' },
+    ];
+  }
   return units.map((u) => ({ slug: u.slug }));
 }
 
@@ -75,13 +94,12 @@ export async function generateMetadata({ params }: VehicleDetailPageProps): Prom
       title,
       description,
       type: 'article',
+      url: `/unit/${unit.slug}`,
       images: primaryPhoto
         ? [
             {
               url: primaryPhoto,
-              width: 1200,
-              height: 800,
-              alt: `${unit.year} ${unit.make} ${unit.model}`,
+              alt: `${unit.year} ${unit.make} ${unit.model} ${unit.variant}`,
             },
           ]
         : [],
@@ -99,8 +117,28 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
   const { slug } = await params;
   const unit = await getUnitByIdOrSlug(slug);
 
+  // Clean, branded empty-state if the vehicle was not found or is unavailable
   if (!unit) {
-    notFound();
+    return (
+      <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-center items-center px-4 py-16 text-center">
+        <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 text-amber-400 mb-4 shadow-xl">
+          <Car className="w-12 h-12" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+          Vehicle Not Available
+        </h1>
+        <p className="text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
+          This vehicle listing may have been sold, unlisted, or the link may be outdated. Explore our currently available vehicles in our Angeles City showroom.
+        </p>
+        <Link
+          href="/"
+          className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs inline-flex items-center gap-2 transition-colors shadow-lg shadow-amber-500/20"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Return to Buyer Showroom</span>
+        </Link>
+      </main>
+    );
   }
 
   const title = `${unit.year} ${unit.make} ${unit.model}`;
@@ -121,7 +159,11 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
 
           <div className="flex items-center gap-2 text-xs">
             <span className="hidden sm:inline-block text-zinc-500">RL Trading & SEat n Go</span>
-            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${getStatusBadgeStyle(
+                unit.status
+              )}`}
+            >
               {unit.status}
             </span>
           </div>
@@ -130,7 +172,7 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full flex-1">
-        {/* Title & Headline on Mobile / Desktop */}
+        {/* Title & Headline */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500 text-black">
@@ -196,7 +238,9 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
 
                 <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
                   <span className="text-zinc-500 block mb-0.5">Unit Status</span>
-                  <span className="font-semibold text-emerald-400">{unit.status}</span>
+                  <span className={`font-semibold ${unit.status === 'Available' ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                    {unit.status}
+                  </span>
                 </div>
               </div>
             </div>
@@ -205,28 +249,13 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-3">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Car className="w-4 h-4 text-amber-400" />
-                <span>Condition & Dealer Notes</span>
+                <span>Vehicle Details & Condition Notes</span>
               </h2>
 
               <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
                 {unit.description_notes ||
-                  'Thoroughly inspected, tested in Angeles City, ready for immediate transfer with complete documents.'}
+                  'No additional condition notes specified for this vehicle. Contact our showroom team for complete maintenance history.'}
               </p>
-
-              <div className="pt-3 border-t border-zinc-800 flex flex-wrap gap-4 text-xs text-zinc-400">
-                <span className="flex items-center gap-1.5 text-zinc-300">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Verified 100% Not Flooded</span>
-                </span>
-                <span className="flex items-center gap-1.5 text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Clean Legal Title & Documents</span>
-                </span>
-                <span className="flex items-center gap-1.5 text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Original LTO Registration</span>
-                </span>
-              </div>
             </div>
           </div>
 

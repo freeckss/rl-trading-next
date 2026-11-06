@@ -20,9 +20,12 @@ interface PhotoGalleryProps {
 export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const isInitialMount = useRef(true);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const thumbnailStripRef = useRef<HTMLDivElement | null>(null);
+  const lightboxStripRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const totalPhotos = images.length;
   const currentImage = images[activeIndex];
@@ -38,7 +41,51 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
     setActiveIndex((prev) => (prev === totalPhotos - 1 ? 0 : prev + 1));
   }, [totalPhotos]);
 
-  // Keyboard navigation for Lightbox
+  // Preload adjacent images (index - 1 and index + 1) for seamless transitions
+  useEffect(() => {
+    if (totalPhotos <= 1) return;
+    const prevIdx = activeIndex > 0 ? activeIndex - 1 : totalPhotos - 1;
+    const nextIdx = activeIndex < totalPhotos - 1 ? activeIndex + 1 : 0;
+    const adjacentUrls = [images[prevIdx]?.image_url, images[nextIdx]?.image_url].filter(Boolean);
+
+    adjacentUrls.forEach((url) => {
+      if (typeof window !== 'undefined') {
+        const preloadImg = new window.Image();
+        preloadImg.src = url;
+      }
+    });
+  }, [activeIndex, images, totalPhotos]);
+
+  // Centering helper that scrolls only the horizontal container, preventing document jump
+  const scrollThumbIntoContainer = useCallback((container: HTMLDivElement | null, index: number) => {
+    if (!container) return;
+    const thumb = container.children[index] as HTMLElement | undefined;
+    if (!thumb) return;
+
+    const containerWidth = container.clientWidth;
+    const thumbLeft = thumb.offsetLeft;
+    const thumbWidth = thumb.clientWidth;
+
+    const targetScrollLeft = thumbLeft - containerWidth / 2 + thumbWidth / 2;
+    container.scrollTo({
+      left: Math.max(0, targetScrollLeft),
+      behavior: 'smooth',
+    });
+  }, []);
+
+  // Sync thumbnail scroll position on activeIndex change (skip on initial mount to avoid page scroll jumps)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    scrollThumbIntoContainer(thumbnailStripRef.current, activeIndex);
+    if (isLightboxOpen) {
+      scrollThumbIntoContainer(lightboxStripRef.current, activeIndex);
+    }
+  }, [activeIndex, isLightboxOpen, scrollThumbIntoContainer]);
+
+  // Keyboard navigation & body scroll lock for Lightbox
   useEffect(() => {
     if (!isLightboxOpen) return;
 
@@ -56,24 +103,18 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    // Focus close button for accessibility
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus();
+      scrollThumbIntoContainer(lightboxStripRef.current, activeIndex);
+    }, 50);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = originalOverflow;
+      clearTimeout(timer);
     };
-  }, [isLightboxOpen, handlePrev, handleNext]);
-
-  // Keep active thumbnail visible in scroll view
-  useEffect(() => {
-    if (!thumbnailStripRef.current) return;
-    const activeThumb = thumbnailStripRef.current.children[activeIndex] as HTMLElement;
-    if (activeThumb) {
-      activeThumb.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center',
-      });
-    }
-  }, [activeIndex]);
+  }, [isLightboxOpen, handlePrev, handleNext, activeIndex, scrollThumbIntoContainer]);
 
   // Touch swipe support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -111,7 +152,7 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
         <div>
           <h4 className="text-base font-semibold text-zinc-300">No Photos Available</h4>
           <p className="text-xs text-zinc-500 mt-1 max-w-sm">
-            Detailed showcase images for this vehicle will be uploaded shortly.
+            Showcase images for this vehicle will be uploaded shortly.
           </p>
         </div>
       </div>
@@ -133,7 +174,7 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
           alt={`${unitTitle} - Photo ${activeIndex + 1}`}
           fill
           sizes="(max-width: 1024px) 100vw, 65vw"
-          priority
+          preload
           className="object-cover transition-transform duration-300 group-hover:scale-[1.01]"
         />
 
@@ -185,7 +226,7 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
       {totalPhotos > 1 && (
         <div
           ref={thumbnailStripRef}
-          className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar select-none"
+          className="flex items-center justify-start gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar select-none"
         >
           {images.map((img, idx) => {
             const isActive = idx === activeIndex;
@@ -217,10 +258,13 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
       {/* Full-Screen Lightbox Modal */}
       {isLightboxOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Photo viewer - ${unitTitle}`}
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 select-none animate-in fade-in duration-200"
           onClick={() => setIsLightboxOpen(false)}
         >
-          {/* Top Bar with Title, Counter, and Close Button */}
+          {/* Top Bar with Title, Counter, and Accessible Close Button */}
           <div
             className="flex items-center justify-between text-white py-2 px-2 max-w-7xl mx-auto w-full z-10"
             onClick={(e) => e.stopPropagation()}
@@ -235,10 +279,11 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
             </div>
 
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={() => setIsLightboxOpen(false)}
               aria-label="Close full-screen lightbox"
-              className="p-2 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 transition-colors"
+              className="p-2 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               <X className="w-5 h-5" />
             </button>
@@ -258,7 +303,6 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
                 alt={`${unitTitle} - Full Screen ${activeIndex + 1}`}
                 fill
                 sizes="100vw"
-                priority
                 className="object-contain"
               />
             </div>
@@ -286,10 +330,11 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
             )}
           </div>
 
-          {/* Lightbox Bottom Thumbnails Strip */}
+          {/* Lightbox Bottom Thumbnails Strip (justify-start md:justify-center to prevent cut-off on 40 photos) */}
           {totalPhotos > 1 && (
             <div
-              className="flex items-center justify-center gap-2 overflow-x-auto py-2 max-w-4xl mx-auto w-full no-scrollbar"
+              ref={lightboxStripRef}
+              className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto py-2 max-w-4xl mx-auto w-full no-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
               {images.map((img, idx) => (
@@ -319,4 +364,3 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
     </div>
   );
 }
-

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { VehicleUnit, BodyType } from '@/types/database';
+import type { PublicVehicleUnit, BodyType, UnitStatus } from '@/types/database';
 import { formatPHP } from '@/lib/calculator';
 import {
   Search,
@@ -14,11 +14,12 @@ import {
   Car,
   Camera,
   ChevronRight,
+  Phone,
   X,
 } from 'lucide-react';
 
 interface ShowroomCatalogProps {
-  initialUnits: VehicleUnit[];
+  initialUnits: PublicVehicleUnit[];
 }
 
 const BODY_TYPES: Array<'All' | BodyType> = [
@@ -32,13 +33,30 @@ const BODY_TYPES: Array<'All' | BodyType> = [
 
 type SortOption = 'newest' | 'price-asc' | 'price-desc' | 'mileage-asc';
 
+function getStatusBadgeStyle(status: UnitStatus) {
+  switch (status) {
+    case 'Available':
+      return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case 'Pending':
+      return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+    case 'Sold':
+      return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+    default:
+      return 'bg-zinc-800 text-zinc-400 border-zinc-700';
+  }
+}
+
 export default function ShowroomCatalog({ initialUnits }: ShowroomCatalogProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBodyType, setSelectedBodyType] = useState<'All' | BodyType>('All');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  // Filter and sort units
+  // Filter and sort units (called unconditionally)
   const filteredUnits = useMemo(() => {
+    if (!initialUnits || initialUnits.length === 0) {
+      return [];
+    }
+
     let result = [...initialUnits];
 
     // Search query filter
@@ -67,7 +85,6 @@ export default function ShowroomCatalog({ initialUnits }: ShowroomCatalogProps) 
           return a.mileage - b.mileage;
         case 'newest':
         default:
-          // Sort by year descending, then created_at descending
           if (b.year !== a.year) {
             return b.year - a.year;
           }
@@ -83,6 +100,46 @@ export default function ShowroomCatalog({ initialUnits }: ShowroomCatalogProps) 
     setSelectedBodyType('All');
     setSortBy('newest');
   };
+
+  // If initial inventory array is completely empty, render the branded showroom empty state
+  if (!initialUnits || initialUnits.length === 0) {
+    return (
+      <div className="rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/80 to-zinc-950 p-8 sm:p-14 text-center space-y-6 max-w-2xl mx-auto shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+          <Car className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            No Units Currently in Stock
+          </h3>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            All recent pre-owned units have been reserved or sold! Fresh inventory is currently undergoing our mechanical inspection and legal verification in Angeles City.
+          </p>
+          <p className="text-xs text-amber-400/90 font-medium pt-1">
+            Follow our page or contact us directly for upcoming vehicle arrivals or specific vehicle requests.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <a
+            href="tel:09237309644"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shadow-lg shadow-emerald-950/40"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Call 0923 730 9644</span>
+          </a>
+          <a
+            href="tel:09174403909"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-semibold text-xs transition-colors"
+          >
+            <Phone className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Call 0917 440 3909</span>
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-8">
@@ -220,7 +277,7 @@ export default function ShowroomCatalog({ initialUnits }: ShowroomCatalogProps) 
                       alt={`${unit.year} ${unit.make} ${unit.model} ${unit.variant}`}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      priority={index < 3}
+                      preload={index < 3}
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
@@ -235,7 +292,11 @@ export default function ShowroomCatalog({ initialUnits }: ShowroomCatalogProps) 
                     <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-black/75 backdrop-blur-md text-white border border-white/10">
                       {unit.year}
                     </span>
-                    <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 backdrop-blur-md">
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-xs font-medium border backdrop-blur-md ${getStatusBadgeStyle(
+                        unit.status
+                      )}`}
+                    >
                       {unit.status}
                     </span>
                   </div>

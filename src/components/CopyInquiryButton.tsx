@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
-import type { VehicleUnit } from '@/types/database';
+import type { PublicVehicleUnit } from '@/types/database';
 import { formatPHP } from '@/lib/calculator';
 
 interface CopyInquiryButtonProps {
-  unit: VehicleUnit;
+  unit: PublicVehicleUnit;
 }
 
 export default function CopyInquiryButton({ unit }: CopyInquiryButtonProps) {
