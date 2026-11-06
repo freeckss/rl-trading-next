@@ -174,14 +174,18 @@ function PhotoManagerDialog({
     try {
       const supabase = createClient();
 
-      // Delete file from Supabase Storage
+      // Delete file from Supabase Storage and verify confirmed removal
       if (photo.storage_path) {
-        const { error: storageError } = await supabase.storage
+        const { data: removedData, error: storageError } = await supabase.storage
           .from('vehicle-photos')
           .remove([photo.storage_path]);
 
         if (storageError) {
-          console.warn('Storage file deletion notice:', storageError.message);
+          throw new Error(`Failed to remove file from storage: ${storageError.message}`);
+        }
+
+        if (!removedData || removedData.length === 0) {
+          throw new Error(`Storage did not confirm removal of ${photo.storage_path}`);
         }
       }
 
@@ -208,7 +212,14 @@ function PhotoManagerDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div
+      onClick={(e) => {
+        if (!uploading && e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+    >
       <div className="relative w-full max-w-4xl rounded-3xl border border-zinc-800 bg-zinc-900 p-6 sm:p-8 shadow-2xl my-8 text-zinc-100 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800 shrink-0">
@@ -229,8 +240,9 @@ function PhotoManagerDialog({
           <button
             type="button"
             onClick={onClose}
+            disabled={uploading}
             aria-label="Close modal"
-            className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <X className="w-5 h-5" />
           </button>
@@ -359,7 +371,8 @@ function PhotoManagerDialog({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors"
+            disabled={uploading}
+            className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Done
           </button>

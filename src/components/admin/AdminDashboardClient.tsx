@@ -15,6 +15,7 @@ import {
 } from '@/lib/actions/adminActions';
 import VehicleFormModal from '@/components/admin/VehicleFormModal';
 import PhotoManagerModal from '@/components/admin/PhotoManagerModal';
+import FbMarketplaceKitModal from '@/components/admin/FbMarketplaceKitModal';
 import {
   Car,
   Plus,
@@ -31,6 +32,8 @@ import {
   CheckCircle,
   Loader2,
   Share2,
+  Zap,
+  Printer,
 } from 'lucide-react';
 
 interface AdminDashboardClientProps {
@@ -63,6 +66,9 @@ export default function AdminDashboardClient({
 
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [selectedUnitForPhotos, setSelectedUnitForPhotos] = useState<VehicleUnit | null>(null);
+
+  const [isFbKitModalOpen, setIsFbKitModalOpen] = useState(false);
+  const [selectedUnitForFbKit, setSelectedUnitForFbKit] = useState<VehicleUnit | null>(null);
 
   // Calculate Dealership KPIs
   const totalUnits = units.length;
@@ -479,6 +485,21 @@ export default function AdminDashboardClient({
                         {/* Row Action Buttons */}
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5">
+                            {/* Facebook Marketplace Kit */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedUnitForFbKit(unit);
+                                setIsFbKitModalOpen(true);
+                              }}
+                              title="Facebook Marketplace Automation Kit (Captions & SEO Tags)"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors text-xs font-semibold border border-blue-500/30"
+                            >
+                              <Zap className="w-3.5 h-3.5 text-blue-400" />
+                              <span>⚡ FB Kit</span>
+                            </button>
+
+                            {/* Photos Manager */}
                             <button
                               type="button"
                               onClick={() => {
@@ -491,6 +512,17 @@ export default function AdminDashboardClient({
                               <span>Photos ({photoCount})</span>
                             </button>
 
+                            {/* Printable Windshield Spec Sheet */}
+                            <Link
+                              href={`/admin/unit/${unit.id}/print`}
+                              target="_blank"
+                              title="Print Windshield Spec Sheet (Letter/A4)"
+                              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700 inline-flex items-center"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </Link>
+
+                            {/* Edit specs */}
                             <button
                               type="button"
                               onClick={() => {
@@ -503,6 +535,7 @@ export default function AdminDashboardClient({
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
 
+                            {/* Delete vehicle */}
                             <button
                               type="button"
                               disabled={isRowBusy}
@@ -567,10 +600,19 @@ export default function AdminDashboardClient({
             setSelectedUnitForPhotos((prev) =>
               prev ? { ...prev, images: updatedPhotos } : null
             );
-            router.refresh();
           }}
         />
       )}
+
+      {/* Facebook Marketplace Kit Modal */}
+      <FbMarketplaceKitModal
+        isOpen={isFbKitModalOpen}
+        onClose={() => {
+          setIsFbKitModalOpen(false);
+          setSelectedUnitForFbKit(null);
+        }}
+        unit={selectedUnitForFbKit}
+      />
     </div>
   );
 }

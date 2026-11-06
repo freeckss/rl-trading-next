@@ -181,12 +181,22 @@ export async function deleteUnit(unitId: string): Promise<ActionResponse> {
       .filter((path): path is string => Boolean(path && path.trim()));
 
     if (storagePaths.length > 0) {
-      const { error: storageRemoveError } = await supabase.storage
+      const { data: removedData, error: storageRemoveError } = await supabase.storage
         .from('vehicle-photos')
         .remove(storagePaths);
 
       if (storageRemoveError) {
-        console.warn(`[deleteUnit] Storage cleanup warning: ${storageRemoveError.message}`);
+        return {
+          success: false,
+          error: `Storage cleanup failed: ${storageRemoveError.message}`,
+        };
+      }
+
+      if (!removedData || removedData.length === 0) {
+        return {
+          success: false,
+          error: 'Storage deletion could not be confirmed for associated vehicle photos.',
+        };
       }
     }
 
