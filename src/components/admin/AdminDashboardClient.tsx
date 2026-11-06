@@ -171,10 +171,31 @@ export default function AdminDashboardClient({
   };
 
   // Start / Renew 3-day boost
-  const handleStartBoost = async (unitId: string) => {
-    setUpdatingId(unitId);
+  const handleStartBoost = async (unit: VehicleUnit) => {
+    if (unit.boost_start && unit.boost_end) {
+      const endMs = new Date(unit.boost_end).getTime();
+      const now = serverTimestamp && serverTimestamp > 0 ? serverTimestamp : Date.now();
+      if (!isNaN(endMs) && now < endMs) {
+        const formattedDate = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Manila',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(new Date(endMs));
+
+        if (
+          !confirm(
+            `This unit is still boosted until ${formattedDate}. Restart a new 3-day boost from now?`
+          )
+        ) {
+          return;
+        }
+      }
+    }
+
+    setUpdatingId(unit.id);
     try {
-      const res = await startBoost(unitId);
+      const res = await startBoost(unit.id);
       if (!res.success) {
         alert(res.error);
         return;
@@ -183,7 +204,7 @@ export default function AdminDashboardClient({
         const { boost_start, boost_end } = res.data;
         setUnits((prev) =>
           prev.map((u) =>
-            u.id === unitId
+            u.id === unit.id
               ? {
                   ...u,
                   boost_start,
@@ -281,9 +302,10 @@ export default function AdminDashboardClient({
     const remainingMs = endMs - now;
 
     if (remainingMs < 24 * 60 * 60 * 1000) {
+      const hours = Math.max(1, Math.floor(remainingMs / (1000 * 60 * 60)));
       return (
         <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
-          ⚠️ Boost ends today
+          ⚠️ Boost ends in {hours}h
         </span>
       );
     }
@@ -508,7 +530,7 @@ export default function AdminDashboardClient({
                                 <span>•</span>
                                 <span>{unit.transmission}</span>
                                 <span>•</span>
-                                <span>Ending {unit.plate_ending}</span>
+                                <span className="whitespace-nowrap">Ending {unit.plate_ending}</span>
                               </div>
                             </div>
                           </div>
@@ -569,6 +591,18 @@ export default function AdminDashboardClient({
                               <span>{unit.fb_status}</span>
                             </button>
                             {getBoostBadge(unit)}
+                            {unit.status !== 'Sold' && (
+                              <button
+                                type="button"
+                                disabled={isRowBusy}
+                                onClick={() => handleStartBoost(unit)}
+                                title={hasBoost ? 'Renew Facebook 3-day boost' : 'Start Facebook 3-day boost'}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors border border-blue-500/30"
+                              >
+                                <Rocket className="w-3 h-3 text-blue-400" />
+                                <span>{hasBoost ? 'Renew boost' : 'Boost 3 days'}</span>
+                              </button>
+                            )}
                           </div>
                         </td>
 
@@ -590,25 +624,7 @@ export default function AdminDashboardClient({
 
                         {/* Row Action Buttons */}
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                          <div className="inline-flex items-center gap-1.5">
-                            {/* Boost 3 days / Renew boost */}
-                            <button
-                              type="button"
-                              disabled={isRowBusy}
-                              onClick={() => handleStartBoost(unit.id)}
-                              title={hasBoost ? 'Renew Facebook 3-day boost' : 'Start Facebook 3-day boost'}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors text-xs font-semibold border border-blue-500/30"
-                            >
-                              {hasBoost ? (
-                                <>
-                                  <Rocket className="w-3.5 h-3.5 text-blue-400" />
-                                  <span>Renew boost</span>
-                                </>
-                              ) : (
-                                <span>🚀 Boost 3 days</span>
-                              )}
-                            </button>
-
+                          <div className="inline-flex items-center gap-1">
                             {/* Facebook Marketplace Kit */}
                             <button
                               type="button"
@@ -617,10 +633,10 @@ export default function AdminDashboardClient({
                                 setIsFbKitModalOpen(true);
                               }}
                               title="Facebook Marketplace Automation Kit (Captions & SEO Tags)"
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors text-xs font-semibold border border-blue-500/30"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors text-xs font-semibold border border-blue-500/30"
                             >
                               <Zap className="w-3.5 h-3.5 text-blue-400" />
-                              <span>⚡ FB Kit</span>
+                              <span>FB Kit</span>
                             </button>
 
                             {/* Photos Manager */}
@@ -630,49 +646,52 @@ export default function AdminDashboardClient({
                                 setSelectedUnitForPhotos(unit);
                                 setIsPhotoModalOpen(true);
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors text-xs font-semibold border border-zinc-700"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors text-xs font-semibold border border-zinc-700"
                             >
                               <Camera className="w-3.5 h-3.5 text-amber-400" />
                               <span>Photos ({photoCount})</span>
                             </button>
 
-                            {/* Printable Windshield Spec Sheet */}
-                            <Link
-                              href={`/admin/unit/${unit.id}/print`}
-                              target="_blank"
-                              title="Print Windshield Spec Sheet (Letter/A4)"
-                              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700 inline-flex items-center"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </Link>
+                            {/* Compact Icon Actions: Print, Edit, Delete grouped tightly */}
+                            <div className="inline-flex items-center gap-1">
+                              {/* Printable Windshield Spec Sheet */}
+                              <Link
+                                href={`/admin/unit/${unit.id}/print`}
+                                target="_blank"
+                                title="Print Windshield Spec Sheet (Letter/A4)"
+                                className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700 inline-flex items-center"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </Link>
 
-                            {/* Edit specs */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedUnitForEdit(unit);
-                                setIsFormModalOpen(true);
-                              }}
-                              title="Edit vehicle specs & pricing"
-                              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
+                              {/* Edit specs */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedUnitForEdit(unit);
+                                  setIsFormModalOpen(true);
+                                }}
+                                title="Edit vehicle specs & pricing"
+                                className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
 
-                            {/* Delete vehicle */}
-                            <button
-                              type="button"
-                              disabled={isRowBusy}
-                              onClick={() => handleDeleteUnit(unit)}
-                              title="Delete vehicle record"
-                              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-red-600 text-zinc-400 hover:text-white transition-colors border border-zinc-700"
-                            >
-                              {isRowBusy ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-3.5 h-3.5" />
-                              )}
-                            </button>
+                              {/* Delete vehicle */}
+                              <button
+                                type="button"
+                                disabled={isRowBusy}
+                                onClick={() => handleDeleteUnit(unit)}
+                                title="Delete vehicle record"
+                                className="p-1.5 rounded-lg bg-zinc-800 hover:bg-red-600 text-zinc-400 hover:text-white transition-colors border border-zinc-700"
+                              >
+                                {isRowBusy ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
