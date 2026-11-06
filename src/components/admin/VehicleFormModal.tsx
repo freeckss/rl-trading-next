@@ -274,7 +274,7 @@ function VehicleFormDialog({
               <input
                 type="number"
                 min={1}
-                step={1000}
+                step={1}
                 required
                 value={cashPrice}
                 onChange={(e) => setCashPrice(Number(e.target.value))}
@@ -289,7 +289,7 @@ function VehicleFormDialog({
               <input
                 type="number"
                 min={0}
-                step={1000}
+                step={1}
                 required
                 value={defaultAllInDp}
                 onChange={(e) => setDefaultAllInDp(Number(e.target.value))}
