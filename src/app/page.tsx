@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from 'react';
 import { getAvailableUnits } from '@/lib/services/vehicleService';
 import ShowroomCatalog from '@/components/ShowroomCatalog';

@@ -108,11 +108,13 @@ ALTER TABLE unit_images ENABLE ROW LEVEL SECURITY;
 -- UNITS TABLE POLICIES
 -- ------------------------------------------------------------------------------
 
--- Public showroom visitors can view all units
+-- Only administrators can select units directly (public showroom queries public_units view)
 DROP POLICY IF EXISTS "Allow public read access on units" ON units;
-CREATE POLICY "Allow public read access on units"
+DROP POLICY IF EXISTS "Allow admin read on units" ON units;
+CREATE POLICY "Allow admin read on units"
   ON units FOR SELECT
-  USING (true);
+  TO authenticated
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
 -- Only authenticated administrators can insert units
 DROP POLICY IF EXISTS "Allow admin insert on units" ON units;

@@ -85,6 +85,16 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
     }
   }, [activeIndex, isLightboxOpen, scrollThumbIntoContainer]);
 
+  // Accessibility: Focus close button ONLY when modal opens (not on activeIndex change)
+  useEffect(() => {
+    if (isLightboxOpen) {
+      const timer = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isLightboxOpen]);
+
   // Keyboard navigation & body scroll lock for Lightbox
   useEffect(() => {
     if (!isLightboxOpen) return;
@@ -103,18 +113,11 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Focus close button for accessibility
-    const timer = setTimeout(() => {
-      closeButtonRef.current?.focus();
-      scrollThumbIntoContainer(lightboxStripRef.current, activeIndex);
-    }, 50);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = originalOverflow;
-      clearTimeout(timer);
     };
-  }, [isLightboxOpen, handlePrev, handleNext, activeIndex, scrollThumbIntoContainer]);
+  }, [isLightboxOpen, handlePrev, handleNext]);
 
   // Touch swipe support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -330,11 +333,11 @@ export default function PhotoGallery({ images = [], unitTitle }: PhotoGalleryPro
             )}
           </div>
 
-          {/* Lightbox Bottom Thumbnails Strip (justify-start md:justify-center to prevent cut-off on 40 photos) */}
+          {/* Lightbox Bottom Thumbnails Strip (justify-start across all screen sizes for seamless 40-photo scrolling) */}
           {totalPhotos > 1 && (
             <div
               ref={lightboxStripRef}
-              className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto py-2 max-w-4xl mx-auto w-full no-scrollbar"
+              className="flex items-center justify-start gap-2 overflow-x-auto py-2 max-w-4xl mx-auto w-full no-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
               {images.map((img, idx) => (

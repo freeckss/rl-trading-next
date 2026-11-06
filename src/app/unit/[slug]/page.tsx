@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -76,8 +78,11 @@ export async function generateMetadata({ params }: VehicleDetailPageProps): Prom
 
   if (!unit) {
     return {
-      title: 'Vehicle Not Found | RL Trading & SEat n Go',
+      title: 'Vehicle Not Found | RL Trading',
       description: 'The requested pre-owned vehicle listing could not be found.',
+      robots: {
+        index: false,
+      },
     };
   }
 
