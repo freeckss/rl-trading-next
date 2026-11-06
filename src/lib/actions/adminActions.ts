@@ -175,7 +175,17 @@ export async function deleteUnit(unitId: string): Promise<ActionResponse> {
       console.warn(`[deleteUnit] Failed to fetch image storage paths: ${imagesError.message}`);
     }
 
-    // 2. Delete physical image files from Supabase Storage (if files exist in bucket)
+    // 2. Delete vehicle row from units table first (cascades to unit_images in DB)
+    const { error: deleteError } = await supabase
+      .from('units')
+      .delete()
+      .eq('id', unitId);
+
+    if (deleteError) {
+      return { success: false, error: `Failed to delete vehicle record: ${deleteError.message}` };
+    }
+
+    // 3. Delete physical image files from Supabase Storage (if files exist in bucket)
     const storagePaths = (images || [])
       .map((img) => img.storage_path)
       .filter((path): path is string => Boolean(path && path.trim()));
@@ -186,21 +196,11 @@ export async function deleteUnit(unitId: string): Promise<ActionResponse> {
         .remove(storagePaths);
 
       if (storageRemoveError) {
-        return {
-          success: false,
-          error: `Storage cleanup failed: ${storageRemoveError.message}`,
-        };
+        console.warn(
+          `[deleteUnit] Storage cleanup failed for ${unitId}:`,
+          storageRemoveError.message
+        );
       }
-    }
-
-    // 3. Delete vehicle row from units table (cascades to unit_images in DB)
-    const { error: deleteError } = await supabase
-      .from('units')
-      .delete()
-      .eq('id', unitId);
-
-    if (deleteError) {
-      return { success: false, error: `Failed to delete vehicle record: ${deleteError.message}` };
     }
 
     revalidatePath('/admin');

@@ -174,18 +174,7 @@ function PhotoManagerDialog({
     try {
       const supabase = createClient();
 
-      // Delete file from Supabase Storage (if file exists in bucket)
-      if (photo.storage_path) {
-        const { error: storageError } = await supabase.storage
-          .from('vehicle-photos')
-          .remove([photo.storage_path]);
-
-        if (storageError) {
-          throw new Error(`Failed to remove file from storage: ${storageError.message}`);
-        }
-      }
-
-      // Delete database row from unit_images
+      // 1. Delete database row from unit_images first
       const { error: dbError } = await supabase
         .from('unit_images')
         .delete()
@@ -193,6 +182,20 @@ function PhotoManagerDialog({
 
       if (dbError) {
         throw new Error(`Failed to delete photo record: ${dbError.message}`);
+      }
+
+      // 2. Remove file from Supabase Storage (if removal fails, warn and continue)
+      if (photo.storage_path) {
+        const { error: storageError } = await supabase.storage
+          .from('vehicle-photos')
+          .remove([photo.storage_path]);
+
+        if (storageError) {
+          console.warn(
+            `[handleDeletePhoto] Storage cleanup failed for ${photo.storage_path}:`,
+            storageError.message
+          );
+        }
       }
 
       const updated = photos.filter((p) => p.id !== photo.id);
