@@ -11,6 +11,7 @@ import type { UnitStatus } from '@/types/database';
 import {
   Car,
   ChevronLeft,
+  ChevronRight,
   MapPin,
   Phone,
   Tag,
@@ -90,7 +91,16 @@ export async function generateMetadata({ params }: VehicleDetailPageProps): Prom
   const primaryPhoto = unit.images && unit.images.length > 0 ? unit.images[0].image_url : undefined;
   const dpText =
     unit.default_all_in_dp > 0 ? ` | Target All-In DP: ${formatPHP(unit.default_all_in_dp)}` : '';
-  const description = `Cash Price: ${formatPHP(unit.cash_price)}${dpText} • ${unit.transmission} • ${unit.fuel} • ${unit.mileage.toLocaleString('en-US')} km • Plate Ending ${unit.plate_ending}. Available at RL Trading & SEat n Go, MacArthur Hwy, Pulung Bulu, Angeles City, Pampanga.`;
+  const specsText = `Cash Price: ${formatPHP(unit.cash_price)}${dpText} • ${unit.transmission} • ${unit.fuel} • ${unit.mileage.toLocaleString('en-US')} km • Plate Ending ${unit.plate_ending}.`;
+
+  let description: string;
+  if (unit.status === 'Sold') {
+    description = `SOLD — ${specsText} RL Trading & SEat n Go, MacArthur Hwy, Pulung Bulu, Angeles City, Pampanga.`;
+  } else if (unit.status === 'Pending') {
+    description = `RESERVED — ${specsText} RL Trading & SEat n Go, MacArthur Hwy, Pulung Bulu, Angeles City, Pampanga.`;
+  } else {
+    description = `${specsText} Available at RL Trading & SEat n Go, MacArthur Hwy, Pulung Bulu, Angeles City, Pampanga.`;
+  }
 
   return {
     title,
@@ -150,7 +160,11 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
   const codingDay = getCodingDay(unit.plate_ending);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-24 md:pb-12 selection:bg-amber-500 selection:text-black">
+    <main
+      className={`min-h-screen bg-zinc-950 text-zinc-100 flex flex-col ${
+        unit.status === 'Sold' ? 'pb-12' : 'pb-24 md:pb-12'
+      } selection:bg-amber-500 selection:text-black`}
+    >
       {/* Top Header / Breadcrumb Navigation */}
       <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
@@ -177,6 +191,57 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full flex-1">
+        {/* Prominent Status Banner for Sold and Pending */}
+        {unit.status !== 'Available' && (
+          <div
+            className={`mb-6 p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              unit.status === 'Sold'
+                ? 'bg-zinc-900 border-zinc-700/80 text-zinc-300'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2.5 rounded-xl shrink-0 ${
+                  unit.status === 'Sold'
+                    ? 'bg-zinc-800 text-zinc-400'
+                    : 'bg-amber-500/20 text-amber-400'
+                }`}
+              >
+                {unit.status === 'Sold' ? (
+                  <Car className="w-5 h-5" />
+                ) : (
+                  <Clock className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-white">
+                  {unit.status === 'Sold'
+                    ? 'This unit has been sold'
+                    : 'This unit is reserved — pending sale'}
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {unit.status === 'Sold'
+                    ? 'This vehicle listing is archived and is no longer available for purchase.'
+                    : 'A buyer has placed a deposit on this unit. You may still inquire in case the transaction does not push through.'}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/"
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors ${
+                unit.status === 'Sold'
+                  ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-md shadow-amber-500/20'
+                  : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
+              }`}
+            >
+              <span>View available units</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
+
         {/* Title & Headline */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -302,26 +367,29 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
                 </p>
               </div>
 
-              {/* Copy Inquiry Details Button */}
-              <CopyInquiryButton unit={unit} />
+              {/* Copy Inquiry & Call Buttons (Hidden for Sold units) */}
+              {unit.status !== 'Sold' && (
+                <>
+                  <CopyInquiryButton unit={unit} />
 
-              {/* Direct Call & Message Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <a
-                  href="tel:09237309644"
-                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-950/40"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Call Smart</span>
-                </a>
-                <a
-                  href="tel:09174403909"
-                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-950/40"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Call Globe</span>
-                </a>
-              </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <a
+                      href="tel:09237309644"
+                      className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-950/40"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call Smart</span>
+                    </a>
+                    <a
+                      href="tel:09174403909"
+                      className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-950/40"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call Globe</span>
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Showroom Location & Visiting Hours Card */}
@@ -365,25 +433,27 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
         </div>
       </div>
 
-      {/* Sticky Mobile Bottom Action Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 p-3 shadow-2xl flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <span className="text-[11px] text-zinc-400 block truncate">Cash Price:</span>
-          <span className="text-base font-bold text-white truncate block">
-            {formatPHP(unit.cash_price)}
-          </span>
-        </div>
+      {/* Sticky Mobile Bottom Action Bar (Hidden for Sold units) */}
+      {unit.status !== 'Sold' && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 p-3 shadow-2xl flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-[11px] text-zinc-400 block truncate">Cash Price:</span>
+            <span className="text-base font-bold text-white truncate block">
+              {formatPHP(unit.cash_price)}
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <a
-            href="tel:09237309644"
-            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-md"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span>Call Dealership</span>
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="tel:09237309644"
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-md"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Call Dealership</span>
+            </a>
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

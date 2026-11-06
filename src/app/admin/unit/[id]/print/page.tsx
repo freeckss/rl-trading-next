@@ -99,6 +99,8 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
   });
 
   const codingInfo = getCodingDay(unit.plate_ending);
+  const vehicleTitle = `${unit.year} ${unit.make} ${unit.model}`;
+  const isLongTitle = vehicleTitle.length > 24;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-900 print:bg-white print:text-black">
@@ -154,8 +156,12 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
             <span className="inline-block px-3 py-0.5 rounded-full bg-black text-white text-[11px] font-black uppercase tracking-wider">
               {unit.body_type} • Pre-Owned Certified
             </span>
-            <h2 className="text-4xl sm:text-5xl font-black tracking-tight leading-none uppercase text-black">
-              {unit.year} {unit.make} {unit.model}
+            <h2
+              className={`${
+                isLongTitle ? 'text-3xl' : 'text-4xl sm:text-5xl'
+              } font-black tracking-tight leading-none uppercase text-black`}
+            >
+              {vehicleTitle}
             </h2>
             <p className="text-xl sm:text-2xl font-extrabold text-zinc-800 tracking-tight">
               {unit.variant}
