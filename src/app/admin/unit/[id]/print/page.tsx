@@ -7,34 +7,12 @@ import { createClient } from '@/lib/supabase/server';
 import { mockVehicleUnits } from '@/lib/mockUnits';
 import type { VehicleUnit } from '@/types/database';
 import { formatPHP } from '@/lib/calculator';
+import { getCodingDay } from '@/lib/business';
 import PrintButton from '@/components/admin/PrintButton';
 import { ChevronLeft, Car, MapPin, Phone, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
-}
-
-function getCodingDay(plateEnding: string): string {
-  const lastDigit = plateEnding.trim().slice(-1);
-  switch (lastDigit) {
-    case '1':
-    case '2':
-      return 'Monday Coding (1, 2)';
-    case '3':
-    case '4':
-      return 'Tuesday Coding (3, 4)';
-    case '5':
-    case '6':
-      return 'Wednesday Coding (5, 6)';
-    case '7':
-    case '8':
-      return 'Thursday Coding (7, 8)';
-    case '9':
-    case '0':
-      return 'Friday Coding (9, 0)';
-    default:
-      return 'No Coding Restriction';
-  }
 }
 
 export default async function PrintWindshieldPage({ params }: PrintPageProps) {
@@ -141,12 +119,12 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5 text-xs font-semibold text-zinc-600 pt-0.5">
               <span className="flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
-                MacArthur Highway, Pulung Bulu, Angeles City, Pampanga (Beside Shell Station)
+                MacArthur Highway, Pulung Bulu, Angeles City, Pampanga (Beside Shell Station, in front of Motech Auto Center)
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
                 <Phone className="w-3.5 h-3.5 shrink-0" />
-                0917 440 3909 / 0923 730 9644
+                0923 730 9644 / 0917 440 3909
               </span>
             </div>
           </header>
@@ -295,7 +273,7 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
               Viewing Hours: Mon – Sat 8:00 AM – 6:00 PM • Sunday viewings by appointment
             </div>
             <div>
-              Direct Lines: 0917 440 3909 / 0923 730 9644
+              Direct Lines: 0923 730 9644 / 0917 440 3909
             </div>
           </footer>
         </div>

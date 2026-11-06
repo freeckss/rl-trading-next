@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { VehicleUnit } from '@/types/database';
 import { formatPHP } from '@/lib/calculator';
 import { copyToClipboard } from '@/lib/clipboard';
+import { getCodingDay } from '@/lib/business';
 import {
   X,
   Copy,
@@ -19,29 +20,6 @@ interface FbMarketplaceKitModalProps {
   isOpen: boolean;
   onClose: () => void;
   unit: VehicleUnit | null;
-}
-
-function getCodingDay(plateEnding: string): string {
-  const lastDigit = plateEnding.trim().slice(-1);
-  switch (lastDigit) {
-    case '1':
-    case '2':
-      return 'Monday Coding (1, 2)';
-    case '3':
-    case '4':
-      return 'Tuesday Coding (3, 4)';
-    case '5':
-    case '6':
-      return 'Wednesday Coding (5, 6)';
-    case '7':
-    case '8':
-      return 'Thursday Coding (7, 8)';
-    case '9':
-    case '0':
-      return 'Friday Coding (9, 0)';
-    default:
-      return 'No coding / Special plate';
-  }
 }
 
 function generateCashCaption(unit: VehicleUnit): string {
@@ -69,9 +47,9 @@ ${unit.description_notes ? `\n📝 VEHICLE CONDITION & NOTES:\n${unit.descriptio
 ✅ Honest & Transparent Transactions
 
 📞 DIRECT INQUIRIES & VIEWING APPOINTMENTS:
-• Globe / Viber / WhatsApp: 0917 440 3909
 • Smart / Sun: 0923 730 9644
-• Viewing Hours: Monday – Saturday, 8:00 AM – 6:00 PM
+• Globe / Viber / WhatsApp: 0917 440 3909
+• Viewing Hours: Monday – Saturday, 8:00 AM – 6:00 PM (Sunday viewings by appointment)
 📍 Google Maps Link: https://maps.app.goo.gl/JFw6ufXYTxyfvWHk8`;
 }
 
@@ -107,8 +85,9 @@ ${unit.description_notes ? `\n📝 VEHICLE CONDITION & NOTES:\n${unit.descriptio
 ✅ Bank Financing & Trade-In Assistance Provided
 
 📞 MESSAGE US FOR ASSISTANCE:
-• Globe / Viber / WhatsApp: 0917 440 3909
 • Smart / Sun: 0923 730 9644
+• Globe / Viber / WhatsApp: 0917 440 3909
+• Viewing Hours: Monday – Saturday, 8:00 AM – 6:00 PM (Sunday viewings by appointment)
 📍 Google Maps Link: https://maps.app.goo.gl/JFw6ufXYTxyfvWHk8`;
 }
 

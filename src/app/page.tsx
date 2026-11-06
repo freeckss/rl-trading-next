@@ -175,15 +175,15 @@ export default function ShowroomPage() {
             <span className="font-bold text-white text-sm block">Direct Contact & Inquiries</span>
             <div className="space-y-1">
               <p>
-                Globe / Viber / WhatsApp:{' '}
-                <a href="tel:09174403909" className="text-zinc-200 hover:text-amber-400 font-semibold">
-                  0917 440 3909
-                </a>
-              </p>
-              <p>
                 Smart / Sun:{' '}
                 <a href="tel:09237309644" className="text-zinc-200 hover:text-amber-400 font-semibold">
                   0923 730 9644
+                </a>
+              </p>
+              <p>
+                Globe / Viber / WhatsApp:{' '}
+                <a href="tel:09174403909" className="text-zinc-200 hover:text-amber-400 font-semibold">
+                  0917 440 3909
                 </a>
               </p>
             </div>
