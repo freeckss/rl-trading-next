@@ -1,4 +1,5 @@
-import type { FinancingBreakdown, VehicleUnit } from '@/types/database';
+import type { VehicleUnit } from '@/types/database';
+import type { FinancingBreakdown } from '@/types/financing';
 
 /**
  * Format a numeric amount to Philippine Peso (PHP) currency format without decimals.

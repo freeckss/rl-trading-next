@@ -45,7 +45,7 @@ monthly48 = approvedLoan * 0.03483; // 48 months (4 years)
 
 ## Verification Commands
 Before completing any stage or committing, always verify:
-- Type check: `npx tsc --noEmit`
+- Type check: `npm run typecheck`
 - Linter: `npm run lint`
 - Build verification: `npm run build`
 

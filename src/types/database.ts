@@ -12,6 +12,7 @@ export interface UnitImage {
   id: string;
   unit_id: string;
   image_url: string;
+  storage_path: string;
   display_order: number;
   created_at: string;
 }
@@ -23,8 +24,8 @@ export interface VehicleUnit {
   make: string;
   model: string;
   variant: string;
-  transmission: 'Automatic' | 'Manual';
-  fuel: 'Diesel' | 'Gasoline';
+  transmission: TransmissionType;
+  fuel: FuelType;
   mileage: number;
   body_type: BodyType;
   plate_ending: string;
@@ -39,16 +40,3 @@ export interface VehicleUnit {
   created_at: string;
   images?: UnitImage[];
 }
-
-export interface FinancingBreakdown {
-  unitPrice: number;
-  targetAllInDown: number;
-  approvedLoan: number;
-  processingFee: number;
-  actualDownpayment: number;
-  monthly24: number;
-  monthly36: number;
-  monthly48: number;
-  isHighLtvWarning: boolean;
-}
-
