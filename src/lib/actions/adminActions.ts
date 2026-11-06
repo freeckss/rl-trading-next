@@ -154,6 +154,55 @@ export async function relistUnit(unitId: string): Promise<ActionResponse> {
 }
 
 /**
+ * Starts or renews a 3-day Facebook boost tracker for a vehicle.
+ * Sets boost_start = now and boost_end = now + 3 days (server time ISO strings).
+ */
+export async function startBoost(
+  unitId: string
+): Promise<ActionResponse<{ boost_start: string; boost_end: string }>> {
+  try {
+    const { supabase } = await verifyAdmin();
+
+    if (!unitId || !unitId.trim()) {
+      return { success: false, error: 'Unit ID is required.' };
+    }
+
+    const now = new Date();
+    const boostStart = now.toISOString();
+    const boostEndDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const boostEnd = boostEndDate.toISOString();
+    const updatedAt = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('units')
+      .update({
+        boost_start: boostStart,
+        boost_end: boostEnd,
+        updated_at: updatedAt,
+      })
+      .eq('id', unitId);
+
+    if (error) {
+      return { success: false, error: `Failed to start boost: ${error.message}` };
+    }
+
+    revalidatePath('/admin');
+    return {
+      success: true,
+      data: {
+        boost_start: boostStart,
+        boost_end: boostEnd,
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to start boost.',
+    };
+  }
+}
+
+/**
  * Deletes a vehicle with full cascade cleanup: removes associated photos from
  * Supabase Storage ('vehicle-photos') before deleting the database row.
  */

@@ -230,7 +230,7 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
               {unit.body_type}
             </span>
             <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
-              Coding: {codingDay} (Ending {unit.plate_ending})
+              Coding: {codingDay}
             </span>
           </div>
 
@@ -280,7 +280,7 @@ async function VehicleDetailContent({ params }: { params: Promise<{ slug: string
                 <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
                   <span className="text-zinc-500 block mb-0.5">Plate Ending</span>
                   <span className="font-semibold text-zinc-200">
-                    {unit.plate_ending} ({codingDay})
+                    {unit.plate_ending} · {codingDay}
                   </span>
                 </div>
 

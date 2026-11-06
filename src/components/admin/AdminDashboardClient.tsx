@@ -12,6 +12,7 @@ import {
   updateUnitFbStatus,
   relistUnit,
   deleteUnit,
+  startBoost,
 } from '@/lib/actions/adminActions';
 import VehicleFormModal from '@/components/admin/VehicleFormModal';
 import PhotoManagerModal from '@/components/admin/PhotoManagerModal';
@@ -34,6 +35,7 @@ import {
   Share2,
   Zap,
   Printer,
+  Rocket,
 } from 'lucide-react';
 
 interface AdminDashboardClientProps {
@@ -78,6 +80,14 @@ export default function AdminDashboardClient({
   const totalAvailableValuation = units
     .filter((u) => u.status === 'Available')
     .reduce((sum, u) => sum + Number(u.cash_price), 0);
+
+  const now = serverTimestamp ?? 0;
+  const activeBoostsCount = units.filter((u) => {
+    if (!u.boost_start || !u.boost_end || now === 0) return false;
+    const start = new Date(u.boost_start).getTime();
+    const end = new Date(u.boost_end).getTime();
+    return !isNaN(start) && !isNaN(end) && now >= start && now <= end;
+  }).length;
 
   // Handle Logout
   const handleLogout = async () => {
@@ -160,6 +170,37 @@ export default function AdminDashboardClient({
     }
   };
 
+  // Start / Renew 3-day boost
+  const handleStartBoost = async (unitId: string) => {
+    setUpdatingId(unitId);
+    try {
+      const res = await startBoost(unitId);
+      if (!res.success) {
+        alert(res.error);
+        return;
+      }
+      if (res.data) {
+        const { boost_start, boost_end } = res.data;
+        setUnits((prev) =>
+          prev.map((u) =>
+            u.id === unitId
+              ? {
+                  ...u,
+                  boost_start,
+                  boost_end,
+                }
+              : u
+          )
+        );
+      }
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to start boost.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   // Delete Unit
   const handleDeleteUnit = async (unit: VehicleUnit) => {
     const confirmName = `${unit.year} ${unit.make} ${unit.model}`;
@@ -209,6 +250,53 @@ export default function AdminDashboardClient({
         </span>
       );
     }
+  };
+
+  // Facebook Boost Badge calculation
+  const getBoostBadge = (unit: VehicleUnit) => {
+    if (!unit.boost_start || !unit.boost_end) return null;
+
+    const startMs = new Date(unit.boost_start).getTime();
+    const endMs = new Date(unit.boost_end).getTime();
+    if (isNaN(startMs) || isNaN(endMs)) return null;
+
+    const now = serverTimestamp ?? 0;
+    if (now === 0) return null;
+
+    if (now >= endMs) {
+      const formattedDate = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(new Date(endMs));
+
+      return (
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-zinc-800 text-zinc-400 border border-zinc-700 whitespace-nowrap">
+          Boost ended {formattedDate}
+        </span>
+      );
+    }
+
+    const remainingMs = endMs - now;
+
+    if (remainingMs < 24 * 60 * 60 * 1000) {
+      return (
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
+          ⚠️ Boost ends today
+        </span>
+      );
+    }
+
+    const totalHours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+
+    return (
+      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+        🚀 Boosted · ends in {days}d {hours}h
+      </span>
+    );
   };
 
   // Filtered inventory list
@@ -266,7 +354,7 @@ export default function AdminDashboardClient({
       {/* Main Admin Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
         {/* Top Dealership KPI Cards */}
-        <section className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-1">
             <div className="flex items-center justify-between text-zinc-400 text-xs font-medium">
               <span>Total Lot Units</span>
@@ -303,7 +391,16 @@ export default function AdminDashboardClient({
             <span className="text-[11px] text-zinc-500">Transferred</span>
           </div>
 
-          <div className="col-span-2 lg:col-span-1 rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/80 to-zinc-950 p-4 space-y-1">
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-1">
+            <div className="flex items-center justify-between text-blue-400 text-xs font-medium">
+              <span>Active Boosts</span>
+              <Rocket className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="text-2xl font-extrabold text-blue-400">{activeBoostsCount}</div>
+            <span className="text-[11px] text-zinc-400">FB 3-day boosts</span>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/80 to-zinc-950 p-4 space-y-1">
             <div className="flex items-center justify-between text-zinc-400 text-xs font-medium">
               <span>Active Valuation</span>
               <Sparkles className="w-4 h-4 text-amber-400" />
@@ -368,6 +465,12 @@ export default function AdminDashboardClient({
                       unit.images && unit.images.length > 0 ? unit.images[0].image_url : null;
                     const photoCount = unit.images?.length || 0;
                     const isRowBusy = updatingId === unit.id;
+                    const hasBoost = Boolean(
+                      unit.boost_start &&
+                      unit.boost_end &&
+                      !isNaN(new Date(unit.boost_start).getTime()) &&
+                      !isNaN(new Date(unit.boost_end).getTime())
+                    );
 
                     return (
                       <tr
@@ -451,19 +554,22 @@ export default function AdminDashboardClient({
 
                         {/* Facebook Marketplace Status Toggle */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <button
-                            type="button"
-                            disabled={isRowBusy}
-                            onClick={() => handleFbStatusToggle(unit.id, unit.fb_status)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all inline-flex items-center gap-1.5 ${
-                              unit.fb_status === 'Listed'
-                                ? 'bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20'
-                                : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
-                            }`}
-                          >
-                            <Share2 className="w-3 h-3" />
-                            <span>{unit.fb_status}</span>
-                          </button>
+                          <div className="flex flex-col gap-1 items-start">
+                            <button
+                              type="button"
+                              disabled={isRowBusy}
+                              onClick={() => handleFbStatusToggle(unit.id, unit.fb_status)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all inline-flex items-center gap-1.5 ${
+                                unit.fb_status === 'Listed'
+                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20'
+                                  : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                              }`}
+                            >
+                              <Share2 className="w-3 h-3" />
+                              <span>{unit.fb_status}</span>
+                            </button>
+                            {getBoostBadge(unit)}
+                          </div>
                         </td>
 
                         {/* Relist Timer Badge & Fast Relist Action */}
@@ -485,6 +591,24 @@ export default function AdminDashboardClient({
                         {/* Row Action Buttons */}
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5">
+                            {/* Boost 3 days / Renew boost */}
+                            <button
+                              type="button"
+                              disabled={isRowBusy}
+                              onClick={() => handleStartBoost(unit.id)}
+                              title={hasBoost ? 'Renew Facebook 3-day boost' : 'Start Facebook 3-day boost'}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors text-xs font-semibold border border-blue-500/30"
+                            >
+                              {hasBoost ? (
+                                <>
+                                  <Rocket className="w-3.5 h-3.5 text-blue-400" />
+                                  <span>Renew boost</span>
+                                </>
+                              ) : (
+                                <span>🚀 Boost 3 days</span>
+                              )}
+                            </button>
+
                             {/* Facebook Marketplace Kit */}
                             <button
                               type="button"
