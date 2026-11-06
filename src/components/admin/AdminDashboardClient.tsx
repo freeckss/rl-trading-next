@@ -46,6 +46,14 @@ export default function AdminDashboardClient({
 }: AdminDashboardClientProps) {
   const router = useRouter();
   const [units, setUnits] = useState<VehicleUnit[]>(initialUnits);
+  const [prevInitialUnits, setPrevInitialUnits] = useState(initialUnits);
+
+  // Sync state when initialUnits prop updates without triggering cascading render effect
+  if (initialUnits !== prevInitialUnits) {
+    setPrevInitialUnits(initialUnits);
+    setUnits(initialUnits);
+  }
+
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -77,7 +85,11 @@ export default function AdminDashboardClient({
   const handleStatusChange = async (unitId: string, newStatus: UnitStatus) => {
     setUpdatingId(unitId);
     try {
-      await updateUnitStatus(unitId, newStatus);
+      const res = await updateUnitStatus(unitId, newStatus);
+      if (!res.success) {
+        alert(res.error);
+        return;
+      }
       setUnits((prev) =>
         prev.map((u) => (u.id === unitId ? { ...u, status: newStatus } : u))
       );
@@ -94,7 +106,11 @@ export default function AdminDashboardClient({
     setUpdatingId(unitId);
     const newStatus: FbListingStatus = currentStatus === 'Listed' ? 'Unlisted' : 'Listed';
     try {
-      await updateUnitFbStatus(unitId, newStatus);
+      const res = await updateUnitFbStatus(unitId, newStatus);
+      if (!res.success) {
+        alert(res.error);
+        return;
+      }
       setUnits((prev) =>
         prev.map((u) =>
           u.id === unitId
@@ -119,7 +135,11 @@ export default function AdminDashboardClient({
   const handleRelist = async (unitId: string) => {
     setUpdatingId(unitId);
     try {
-      await relistUnit(unitId);
+      const res = await relistUnit(unitId);
+      if (!res.success) {
+        alert(res.error);
+        return;
+      }
       const now = new Date().toISOString();
       setUnits((prev) =>
         prev.map((u) =>
@@ -141,7 +161,11 @@ export default function AdminDashboardClient({
 
     setUpdatingId(unit.id);
     try {
-      await deleteUnit(unit.id);
+      const res = await deleteUnit(unit.id);
+      if (!res.success) {
+        alert(res.error);
+        return;
+      }
       setUnits((prev) => prev.filter((u) => u.id !== unit.id));
       router.refresh();
     } catch (err) {
@@ -509,20 +533,44 @@ export default function AdminDashboardClient({
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         unit={selectedUnitForEdit}
-        onSuccess={() => {
+        onSuccess={(savedUnit) => {
+          if (savedUnit) {
+            setUnits((prev) => {
+              const exists = prev.some((u) => u.id === savedUnit.id);
+              if (exists) {
+                return prev.map((u) => (u.id === savedUnit.id ? savedUnit : u));
+              } else {
+                return [savedUnit, ...prev];
+              }
+            });
+          }
           router.refresh();
         }}
       />
 
       {/* 40-Photo WebP Uploader Modal */}
-      <PhotoManagerModal
-        isOpen={isPhotoModalOpen}
-        onClose={() => setIsPhotoModalOpen(false)}
-        unit={selectedUnitForPhotos}
-        onPhotosUpdated={() => {
-          router.refresh();
-        }}
-      />
+      {selectedUnitForPhotos && (
+        <PhotoManagerModal
+          key={selectedUnitForPhotos.id}
+          isOpen={isPhotoModalOpen}
+          onClose={() => {
+            setIsPhotoModalOpen(false);
+            setSelectedUnitForPhotos(null);
+          }}
+          unit={selectedUnitForPhotos}
+          onPhotosUpdated={(updatedPhotos) => {
+            setUnits((prev) =>
+              prev.map((u) =>
+                u.id === selectedUnitForPhotos.id ? { ...u, images: updatedPhotos } : u
+              )
+            );
+            setSelectedUnitForPhotos((prev) =>
+              prev ? { ...prev, images: updatedPhotos } : null
+            );
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

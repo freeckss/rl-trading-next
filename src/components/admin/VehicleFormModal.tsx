@@ -11,13 +11,14 @@ import type {
 } from '@/types/database';
 import { saveVehicle } from '@/lib/actions/adminActions';
 import { generateVehicleSlug } from '@/lib/slugs';
+import { isoToDateTimeLocal, dateTimeLocalToIso } from '@/lib/dates';
 import { X, Loader2, Save, Car, AlertCircle } from 'lucide-react';
 
 interface VehicleFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   unit: VehicleUnit | null;
-  onSuccess: () => void;
+  onSuccess: (savedUnit?: VehicleUnit) => void;
 }
 
 const BODY_TYPES: BodyType[] = ['Pickup', 'SUV', 'Sedan', 'Van', 'Hatchback'];
@@ -49,15 +50,16 @@ function VehicleFormDialog({
   const [status, setStatus] = useState<UnitStatus>(unit?.status ?? 'Available');
   const [fbStatus, setFbStatus] = useState<FbListingStatus>(unit?.fb_status ?? 'Listed');
   const [descriptionNotes, setDescriptionNotes] = useState(unit?.description_notes ?? '');
-  const [boostStart, setBoostStart] = useState(
-    unit?.boost_start ? unit.boost_start.slice(0, 16) : ''
-  );
-  const [boostEnd, setBoostEnd] = useState(unit?.boost_end ? unit.boost_end.slice(0, 16) : '');
+  const [boostStart, setBoostStart] = useState(() => isoToDateTimeLocal(unit?.boost_start));
+  const [boostEnd, setBoostEnd] = useState(() => isoToDateTimeLocal(unit?.boost_end));
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const generatedSlug = generateVehicleSlug(year, make, model, variant, transmission, fuel);
+  // If editing an existing unit, display its permanent immutable slug; if new, preview generated slug
+  const canonicalSlug = unit
+    ? unit.slug
+    : generateVehicleSlug(year, make, model, variant, 'auto');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +71,7 @@ function VehicleFormDialog({
         throw new Error('Please fill out all required vehicle identifiers.');
       }
 
-      await saveVehicle({
+      const result = await saveVehicle({
         id: unit?.id,
         year,
         make,
@@ -85,11 +87,15 @@ function VehicleFormDialog({
         status,
         fb_status: fbStatus,
         description_notes: descriptionNotes,
-        boost_start: boostStart ? new Date(boostStart).toISOString() : null,
-        boost_end: boostEnd ? new Date(boostEnd).toISOString() : null,
+        boost_start: dateTimeLocalToIso(boostStart),
+        boost_end: dateTimeLocalToIso(boostEnd),
       });
 
-      onSuccess();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      onSuccess(result.data);
       onClose();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to save vehicle.');
@@ -142,8 +148,8 @@ function VehicleFormDialog({
               <label className="text-xs font-semibold text-zinc-300 block">Year</label>
               <input
                 type="number"
-                min={2000}
-                max={2030}
+                min={1990}
+                max={2035}
                 required
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
@@ -267,7 +273,7 @@ function VehicleFormDialog({
               <label className="text-xs font-semibold text-zinc-300 block">Cash Price (₱)</label>
               <input
                 type="number"
-                min={0}
+                min={1}
                 step={1000}
                 required
                 value={cashPrice}
@@ -325,7 +331,7 @@ function VehicleFormDialog({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-300 block">Boost Start</label>
+              <label className="text-xs font-semibold text-zinc-300 block">Boost Start (PH Time)</label>
               <input
                 type="datetime-local"
                 value={boostStart}
@@ -335,7 +341,7 @@ function VehicleFormDialog({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-300 block">Boost End</label>
+              <label className="text-xs font-semibold text-zinc-300 block">Boost End (PH Time)</label>
               <input
                 type="datetime-local"
                 value={boostEnd}
@@ -347,9 +353,11 @@ function VehicleFormDialog({
 
           {/* Generated Slug Indicator */}
           <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs text-zinc-400">
-            <span className="text-zinc-500 block mb-0.5">Generated Canonical URL Slug:</span>
+            <span className="text-zinc-500 block mb-0.5">
+              {unit ? 'Permanent Canonical URL Slug (Immutable):' : 'Generated Canonical URL Slug (with collision-proof suffix):'}
+            </span>
             <code className="text-amber-400/90 font-mono text-[11px] break-all">
-              /unit/{generatedSlug}
+              /unit/{canonicalSlug}
             </code>
           </div>
 

@@ -1,20 +1,23 @@
 /**
- * Helper to generate URL-safe slugs: e.g. 2019-toyota-hilux-conquest-2-4-g-at-diesel
+ * Helper to generate immutable, collision-proof URL-safe slugs.
+ * Format: `${year}-${make}-${model}-${variant}-${randomSuffix}`
+ * The short 5-character random suffix guarantees two identical units
+ * (e.g. two 2018 Toyota Vios 1.3 E) never collide on the database UNIQUE constraint.
  */
 export function generateVehicleSlug(
   year: number,
   make: string,
   model: string,
   variant: string,
-  transmission: string,
-  fuel: string
+  customSuffix?: string
 ): string {
-  const raw = `${year} ${make} ${model} ${variant} ${transmission} ${fuel}`;
-  return raw
+  const base = `${year} ${make} ${model} ${variant}`
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
-    .replace(/--+/g, '-');
-}
+    .replace(/-+/g, '-');
 
+  const suffix = customSuffix || Math.random().toString(36).substring(2, 7).toLowerCase();
+  return `${base}-${suffix}`.replace(/-+/g, '-');
+}

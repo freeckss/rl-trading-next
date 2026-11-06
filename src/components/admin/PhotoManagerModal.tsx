@@ -21,31 +21,25 @@ interface PhotoManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   unit: VehicleUnit | null;
-  onPhotosUpdated: () => void;
+  onPhotosUpdated: (updatedPhotos: UnitImage[]) => void;
 }
 
-export default function PhotoManagerModal({
-  isOpen,
+function PhotoManagerDialog({
   onClose,
   unit,
   onPhotosUpdated,
-}: PhotoManagerModalProps) {
+}: Omit<PhotoManagerModalProps, 'isOpen'> & { unit: VehicleUnit }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [photos, setPhotos] = useState<UnitImage[]>(unit?.images || []);
+  const [photos, setPhotos] = useState<UnitImage[]>(() =>
+    unit.images ? [...unit.images].sort((a, b) => a.display_order - b.display_order) : []
+  );
   const [uploading, setUploading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  // Sync photos when unit changes
-  if (unit && unit.images && photos !== unit.images && !uploading && !deletingId) {
-    setPhotos(unit.images);
-  }
-
-  if (!isOpen || !unit) return null;
 
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -61,22 +55,31 @@ export default function PhotoManagerModal({
     setSuccessMsg(null);
 
     const supabase = createClient();
-    const startingOrder =
-      photos.length > 0 ? Math.max(...photos.map((p) => p.display_order)) + 1 : 1;
+    let currentPhotos = [...photos];
+    const failedFiles: { name: string; reason: string }[] = [];
+    let successCount = 0;
 
     try {
-      const newImagesList: UnitImage[] = [...photos];
-
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const stepNum = i + 1;
         setProgressMsg(`Compressing image ${stepNum} of ${files.length}...`);
 
-        // Compress client-side to optimized WebP (~100KB-140KB)
-        const compressedWebP = await compressImageToWebP(file, 1600, 0.82);
+        let compressedWebP: File;
+        try {
+          // Compress client-side to optimized WebP (~100KB-140KB)
+          compressedWebP = await compressImageToWebP(file, 1600, 0.82);
+        } catch (compErr) {
+          failedFiles.push({
+            name: file.name,
+            reason: compErr instanceof Error ? compErr.message : 'Compression failed',
+          });
+          continue;
+        }
 
         setProgressMsg(`Uploading photo ${stepNum} of ${files.length} to storage...`);
-        const storagePath = `${unit.id}/${Date.now()}_${i}.webp`;
+        const randomSuffix = Math.random().toString(36).substring(2, 7);
+        const storagePath = `${unit.id}/${Date.now()}_${randomSuffix}.webp`;
 
         const { error: storageError } = await supabase.storage
           .from('vehicle-photos')
@@ -86,7 +89,11 @@ export default function PhotoManagerModal({
           });
 
         if (storageError) {
-          throw new Error(`Storage upload failed: ${storageError.message}`);
+          failedFiles.push({
+            name: file.name,
+            reason: `Storage upload failed: ${storageError.message}`,
+          });
+          continue;
         }
 
         // Get public URL
@@ -94,7 +101,12 @@ export default function PhotoManagerModal({
           .from('vehicle-photos')
           .getPublicUrl(storagePath);
 
-        const displayOrder = startingOrder + i;
+        // Calculate display_order dynamically based on current photos count
+        const currentMaxOrder =
+          currentPhotos.length > 0
+            ? Math.max(...currentPhotos.map((p) => p.display_order))
+            : 0;
+        const displayOrder = currentMaxOrder + 1;
 
         setProgressMsg(`Registering photo record ${stepNum} of ${files.length}...`);
         const { data: insertedRecord, error: dbError } = await supabase
@@ -109,17 +121,37 @@ export default function PhotoManagerModal({
           .single();
 
         if (dbError) {
-          throw new Error(`Database record creation failed: ${dbError.message}`);
+          // Immediately remove the uploaded storage object to prevent orphaned files
+          await supabase.storage.from('vehicle-photos').remove([storagePath]);
+          failedFiles.push({
+            name: file.name,
+            reason: `Database registration failed: ${dbError.message}`,
+          });
+          continue;
         }
 
         if (insertedRecord) {
-          newImagesList.push(insertedRecord);
+          currentPhotos = [...currentPhotos, insertedRecord].sort(
+            (a, b) => a.display_order - b.display_order
+          );
+          // Partial upload resiliency: Append each photo immediately
+          setPhotos(currentPhotos);
+          successCount++;
+          onPhotosUpdated(currentPhotos);
         }
       }
 
-      setPhotos(newImagesList.sort((a, b) => a.display_order - b.display_order));
-      setSuccessMsg(`Successfully uploaded and compressed ${files.length} photos!`);
-      onPhotosUpdated();
+      if (failedFiles.length > 0) {
+        const failureSummary = failedFiles
+          .map((f) => `"${f.name}" (${f.reason})`)
+          .join(', ');
+        setErrorMsg(
+          `Uploaded ${successCount} photo(s). ${failedFiles.length} file(s) failed: ${failureSummary}`
+        );
+      } else if (successCount > 0) {
+        setSuccessMsg(`Successfully uploaded and compressed ${successCount} photos!`);
+      }
+
       router.refresh();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'An error occurred during upload.');
@@ -166,7 +198,7 @@ export default function PhotoManagerModal({
       const updated = photos.filter((p) => p.id !== photo.id);
       setPhotos(updated);
       setSuccessMsg('Photo deleted successfully.');
-      onPhotosUpdated();
+      onPhotosUpdated(updated);
       router.refresh();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to delete photo.');
@@ -337,3 +369,20 @@ export default function PhotoManagerModal({
   );
 }
 
+export default function PhotoManagerModal({
+  isOpen,
+  onClose,
+  unit,
+  onPhotosUpdated,
+}: PhotoManagerModalProps) {
+  if (!isOpen || !unit) return null;
+
+  return (
+    <PhotoManagerDialog
+      key={unit.id}
+      onClose={onClose}
+      unit={unit}
+      onPhotosUpdated={onPhotosUpdated}
+    />
+  );
+}
