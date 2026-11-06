@@ -78,11 +78,18 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
     notFound();
   }
 
-  // Generate dynamic QR code encoding the public showroom listing URL
+  // Site URL validation
+  if (!process.env.NEXT_PUBLIC_SITE_URL && process.env.NODE_ENV === 'production') {
+    console.error(
+      '[PrintWindshieldPage] WARNING: NEXT_PUBLIC_SITE_URL is not defined in production. Windshield QR codes may encode fallback domain rather than live production domain.'
+    );
+  }
+
+  // Generate dynamic QR code encoding the public showroom listing URL (large size for windshield scanning)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://rltrading.vercel.app';
   const canonicalUrl = `${siteUrl}/unit/${unit.slug}`;
   const qrCodeDataUrl = await QRCode.toDataURL(canonicalUrl, {
-    width: 260,
+    width: 320,
     margin: 1,
     errorCorrectionLevel: 'H',
     color: {
@@ -115,64 +122,64 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
         </div>
       </div>
 
-      {/* Main Print Container (A4 / Letter single-page portrait layout) */}
-      <main className="max-w-4xl mx-auto p-4 sm:p-8 print:p-0 print:max-w-none">
-        <div className="bg-white text-black border-4 border-black rounded-3xl print:rounded-none p-8 print:p-6 shadow-2xl print:shadow-none space-y-6">
+      {/* Main Print Container (A4 / Letter single-page portrait layout: fits ~90% of page without page 2 overflow) */}
+      <main className="max-w-4xl mx-auto p-4 sm:p-6 print:p-0 print:max-w-none print:h-screen print:flex print:flex-col print:justify-between">
+        <div className="bg-white text-black border-4 border-black rounded-3xl print:rounded-none p-6 sm:p-7 print:p-5 shadow-2xl print:shadow-none flex-1 flex flex-col justify-between space-y-4 print:space-y-0">
           {/* Dealership Header */}
-          <header className="border-b-4 border-black pb-5 text-center space-y-1.5">
+          <header className="border-b-4 border-black pb-4 text-center space-y-1">
             <div className="flex items-center justify-center gap-2">
-              <Car className="w-8 h-8 text-black" />
+              <Car className="w-7 h-7 text-black shrink-0" />
               <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
                 RL Trading & SEat n Go Shuttle Services
               </h1>
             </div>
-            <p className="text-sm font-bold tracking-wide uppercase text-zinc-700">
+            <p className="text-xs sm:text-sm font-bold tracking-wide uppercase text-zinc-700">
               Quality Pre-Owned Vehicle Dealership & Passenger Shuttle Services
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-zinc-600 pt-1">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5 text-xs font-semibold text-zinc-600 pt-0.5">
               <span className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5" />
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
                 MacArthur Highway, Pulung Bulu, Angeles City, Pampanga (Beside Shell Station)
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5" />
+                <Phone className="w-3.5 h-3.5 shrink-0" />
                 0917 440 3909 / 0923 730 9644
               </span>
             </div>
           </header>
 
           {/* Big Bold Vehicle Title */}
-          <section className="text-center space-y-2 py-2">
-            <span className="inline-block px-3 py-1 rounded-full bg-black text-white text-xs font-black uppercase tracking-wider">
+          <section className="text-center space-y-1 py-1">
+            <span className="inline-block px-3 py-0.5 rounded-full bg-black text-white text-[11px] font-black uppercase tracking-wider">
               {unit.body_type} • Pre-Owned Certified
             </span>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight leading-none uppercase text-black">
               {unit.year} {unit.make} {unit.model}
             </h2>
-            <p className="text-2xl font-extrabold text-zinc-800 tracking-tight">
+            <p className="text-xl sm:text-2xl font-extrabold text-zinc-800 tracking-tight">
               {unit.variant}
             </p>
           </section>
 
           {/* Pricing Box: Cash Price & Target Downpayment */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Cash Price Banner */}
-            <div className="border-4 border-black rounded-2xl p-6 text-center bg-zinc-50 flex flex-col justify-center">
-              <span className="text-xs font-black uppercase tracking-widest text-zinc-600 mb-1">
+            <div className="border-4 border-black rounded-2xl p-5 text-center bg-zinc-50 flex flex-col justify-center">
+              <span className="text-xs font-black uppercase tracking-widest text-zinc-600 mb-0.5">
                 Cash Price (Negotiable)
               </span>
               <div className="text-4xl sm:text-5xl font-black text-black tracking-tight">
                 {formatPHP(unit.cash_price)}
               </div>
-              <span className="text-[11px] font-semibold text-zinc-500 mt-1">
+              <span className="text-[11px] font-semibold text-zinc-600 mt-1">
                 Complete Documents • Transfer Assistance Included
               </span>
             </div>
 
             {/* Target All-In Downpayment Box */}
-            <div className="border-4 border-black rounded-2xl p-6 text-center bg-black text-white flex flex-col justify-center">
-              <span className="text-xs font-black uppercase tracking-widest text-amber-400 mb-1">
+            <div className="border-4 border-black rounded-2xl p-5 text-center bg-black text-white flex flex-col justify-center">
+              <span className="text-xs font-black uppercase tracking-widest text-amber-400 mb-0.5">
                 Target All-In Downpayment
               </span>
               <div className="text-4xl sm:text-5xl font-black text-white tracking-tight">
@@ -181,41 +188,41 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
                   : 'Flexible DP'}
               </div>
               <span className="text-[11px] font-semibold text-zinc-300 mt-1">
-                Low Monthly Financing • 2, 3, or 4 Year Terms Available
+                Flexible 2-year, 3-year, or 4-year financing terms available upon approval
               </span>
             </div>
           </section>
 
           {/* 4-Column Specs Grid */}
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center border-y-4 border-black py-4">
-            <div className="border-r-2 last:border-r-0 border-zinc-300 p-2">
+          <section className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center border-y-4 border-black py-3">
+            <div className="border-r-2 last:border-r-0 border-zinc-300 p-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">
                 Transmission
               </span>
-              <span className="text-lg font-black text-black">{unit.transmission}</span>
+              <span className="text-base sm:text-lg font-black text-black">{unit.transmission}</span>
             </div>
 
-            <div className="border-r-2 last:border-r-0 border-zinc-300 p-2">
+            <div className="border-r-2 last:border-r-0 border-zinc-300 p-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">
                 Fuel Type
               </span>
-              <span className="text-lg font-black text-black">{unit.fuel}</span>
+              <span className="text-base sm:text-lg font-black text-black">{unit.fuel}</span>
             </div>
 
-            <div className="border-r-2 last:border-r-0 border-zinc-300 p-2">
+            <div className="border-r-2 last:border-r-0 border-zinc-300 p-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">
                 Mileage
               </span>
-              <span className="text-lg font-black text-black">
+              <span className="text-base sm:text-lg font-black text-black">
                 {unit.mileage.toLocaleString()} km
               </span>
             </div>
 
-            <div className="p-2">
+            <div className="p-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block">
                 Plate Ending
               </span>
-              <span className="text-lg font-black text-black">
+              <span className="text-base sm:text-lg font-black text-black">
                 Ending {unit.plate_ending}
               </span>
               <span className="text-[10px] font-bold text-zinc-600 block">
@@ -225,64 +232,64 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
           </section>
 
           {/* Bottom QR Code & Assurance Section */}
-          <section className="flex flex-col sm:flex-row items-center gap-6 pt-2">
-            {/* Dynamic QR Code */}
+          <section className="flex flex-col sm:flex-row items-center gap-5 pt-1">
+            {/* Dynamic QR Code (Enlarged 190px–200px for easy windshield scanning) */}
             <div className="shrink-0 border-4 border-black rounded-2xl p-2 bg-white flex flex-col items-center text-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={qrCodeDataUrl}
                 alt={`QR code for ${unit.year} ${unit.make} ${unit.model}`}
-                className="w-44 h-44 object-contain"
+                className="w-48 h-48 sm:w-50 sm:h-50 object-contain"
               />
-              <span className="text-[10px] font-mono text-zinc-700 mt-1 max-w-[170px] truncate">
+              <span className="text-[10px] font-mono text-zinc-700 mt-1 max-w-[190px] truncate">
                 {canonicalUrl.replace('https://', '')}
               </span>
             </div>
 
             {/* Scan Directions & Dealership Guarantees */}
-            <div className="space-y-3 flex-1 text-left">
+            <div className="space-y-2.5 flex-1 text-left">
               <div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-black bg-zinc-200 px-2.5 py-0.5 rounded">
-                  <ShieldCheck className="w-4 h-4 text-black" />
+                <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-black bg-zinc-200 px-2 py-0.5 rounded">
+                  <ShieldCheck className="w-3.5 h-3.5 text-black" />
                   Scan with Phone Camera
                 </span>
-                <h3 className="text-base font-extrabold text-black mt-1">
-                  View 40+ HD Photos, Video & Full Specifications
+                <h3 className="text-sm sm:text-base font-extrabold text-black mt-1">
+                  Scan to View Complete HD Photo Gallery, Full Vehicle Specs & Online Inventory
                 </h3>
                 <p className="text-xs text-zinc-600 leading-relaxed">
-                  Point your phone&apos;s camera at the QR code to open the online vehicle page with full interior/exterior photo walkarounds, legal verification details, and direct financing calculators.
+                  Point your phone&apos;s camera at the QR code to open the vehicle page with complete interior/exterior photo walkarounds, legal verification details, and online catalog.
                 </p>
               </div>
 
               {/* Guarantees Checklist */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold text-zinc-800 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs font-bold text-zinc-800 pt-0.5">
                 <div className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-black shrink-0" />
-                  <span>100% Not Flooded (Money-back)</span>
+                  <span>Guaranteed 100% Flood-Free</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-black shrink-0" />
-                  <span>Clean Titles & Verified OR/CR</span>
+                  <span>Clean Legal Documents & LTO Verified</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-black shrink-0" />
-                  <span>LTO Verification Ready</span>
+                  <span>Ready for Long Drive & Complete Inspection</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-black shrink-0" />
-                  <span>Fast Bank Financing Assistance</span>
+                  <span>Trade-In & Bank Financing Assistance</span>
                 </div>
               </div>
             </div>
           </section>
 
           {/* Footer Contact Strip */}
-          <footer className="border-t-2 border-black pt-3 flex flex-col sm:flex-row items-center justify-between text-[11px] font-bold text-zinc-600 gap-2">
+          <footer className="border-t-2 border-black pt-2 flex flex-col sm:flex-row items-center justify-between text-[11px] font-bold text-zinc-600 gap-1 shrink-0">
             <div>
               Viewing Hours: Mon – Sat 8:00 AM – 6:00 PM • Sunday viewings by appointment
             </div>
             <div>
-              Direct Line: 0917 440 3909 / 0923 730 9644
+              Direct Lines: 0917 440 3909 / 0923 730 9644
             </div>
           </footer>
         </div>
@@ -290,4 +297,3 @@ export default async function PrintWindshieldPage({ params }: PrintPageProps) {
     </div>
   );
 }
-

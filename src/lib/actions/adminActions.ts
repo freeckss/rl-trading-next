@@ -175,13 +175,13 @@ export async function deleteUnit(unitId: string): Promise<ActionResponse> {
       console.warn(`[deleteUnit] Failed to fetch image storage paths: ${imagesError.message}`);
     }
 
-    // 2. Delete physical image files from Supabase Storage
+    // 2. Delete physical image files from Supabase Storage (if files exist in bucket)
     const storagePaths = (images || [])
       .map((img) => img.storage_path)
       .filter((path): path is string => Boolean(path && path.trim()));
 
     if (storagePaths.length > 0) {
-      const { data: removedData, error: storageRemoveError } = await supabase.storage
+      const { error: storageRemoveError } = await supabase.storage
         .from('vehicle-photos')
         .remove(storagePaths);
 
@@ -189,13 +189,6 @@ export async function deleteUnit(unitId: string): Promise<ActionResponse> {
         return {
           success: false,
           error: `Storage cleanup failed: ${storageRemoveError.message}`,
-        };
-      }
-
-      if (!removedData || removedData.length === 0) {
-        return {
-          success: false,
-          error: 'Storage deletion could not be confirmed for associated vehicle photos.',
         };
       }
     }

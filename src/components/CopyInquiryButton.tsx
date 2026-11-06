@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import type { PublicVehicleUnit } from '@/types/database';
 import { formatPHP } from '@/lib/calculator';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface CopyInquiryButtonProps {
   unit: PublicVehicleUnit;
@@ -26,23 +27,10 @@ export default function CopyInquiryButton({ unit }: CopyInquiryButtonProps) {
 📍 RL Trading & SEat n Go Shuttle Services (MacArthur Hwy, Angeles City)
 🔗 Unit Link: ${url}`;
 
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(textToCopy);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = textToCopy;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
+    const success = await copyToClipboard(textToCopy);
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
-    } catch (err) {
-      console.error('Failed to copy vehicle details:', err);
     }
   };
 

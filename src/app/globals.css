@@ -33,3 +33,11 @@ body {
   scrollbar-width: none;
 }
 
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+

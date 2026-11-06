@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { VehicleUnit } from '@/types/database';
 import { formatPHP } from '@/lib/calculator';
+import { copyToClipboard } from '@/lib/clipboard';
 import {
   X,
   Copy,
@@ -51,7 +52,7 @@ MacArthur Highway, Pulung Bulu, Angeles City, Pampanga
 (Beside Shell Station, in front of Motech Auto Center)
 
 💰 CASH PRICE: ${formatPHP(unit.cash_price)}
-(Slightly negotiable upon personal inspection & viewing)
+(Negotiable upon personal viewing & inspection)
 
 ⚙️ VEHICLE SPECIFICATIONS:
 • Transmission: ${unit.transmission}
@@ -59,15 +60,15 @@ MacArthur Highway, Pulung Bulu, Angeles City, Pampanga
 • Mileage: ${unit.mileage.toLocaleString()} km
 • Body Type: ${unit.body_type}
 • Plate Ending: ${unit.plate_ending} • ${coding}
-${unit.description_notes ? `\n📝 VEHICLE CONDITION & DETAILS:\n${unit.description_notes}\n` : ''}
-🛡️ QUALITY ASSURANCE & PEACE OF MIND:
-✅ 100% Not Flooded (Money-back guarantee)
-✅ Zero Major Collisions / Complete Chassis Integrity
-✅ Complete Original Legal Documents (OR/CR) Verified
-✅ LTO Registered & Ready for Immediate Name Transfer
-✅ Thoroughly Inspected, Cleaned, and Road-Tested
+${unit.description_notes ? `\n📝 VEHICLE CONDITION & NOTES:\n${unit.description_notes}\n` : ''}
+🛡️ PROFESSIONAL DEALERSHIP ASSURANCES:
+✅ Guaranteed 100% Flood-Free
+✅ Clean Legal Documents & LTO Verified
+✅ Ready for Long Drive & Complete Inspection
+✅ Complete Original Documents (OR/CR) Ready for Name Transfer
+✅ Honest & Transparent Transactions
 
-📞 DIRECT DEALERSHIP INQUIRIES & VIEWING:
+📞 DIRECT INQUIRIES & VIEWING APPOINTMENTS:
 • Globe / Viber / WhatsApp: 0917 440 3909
 • Smart / Sun: 0923 730 9644
 • Viewing Hours: Monday – Saturday, 8:00 AM – 6:00 PM
@@ -79,33 +80,33 @@ function generateFinancingCaption(unit: VehicleUnit): string {
   const dpText =
     unit.default_all_in_dp > 0
       ? formatPHP(unit.default_all_in_dp)
-      : 'Low Downpayment Assistance';
+      : 'Inquire for Low DP Options';
 
   return `🚗 ${unit.year} ${unit.make} ${unit.model} ${unit.variant}
 📍 RL Trading & SEat n Go Shuttle Services
 MacArthur Highway, Pulung Bulu, Angeles City, Pampanga
 (Beside Shell Station, in front of Motech Auto Center)
 
-💰 FINANCING HIGHLIGHTS:
+💰 PRICING & FINANCING:
 • Cash Price: ${formatPHP(unit.cash_price)}
 • Target All-In Downpayment: ${dpText}
-(Includes Comprehensive Insurance, LTO Transfer & Bank Processing Fees)
 
-⚡ FAST BANK APPROVAL & FLEXIBLE TERMS:
-Fast approval, low downpayment options available. Message us for customized 2-year and 3-year computation breakdowns!
+⚡ FINANCING ASSISTANCE:
+Flexible 2-year, 3-year, or 4-year financing terms available upon approval. Message us for customized computation breakdowns and application requirements!
 
 ⚙️ VEHICLE SPECIFICATIONS:
 • Transmission: ${unit.transmission}
 • Fuel Type: ${unit.fuel}
 • Mileage: ${unit.mileage.toLocaleString()} km
 • Plate Ending: ${unit.plate_ending} • ${coding}
-${unit.description_notes ? `\n📝 VEHICLE CONDITION:\n${unit.description_notes}\n` : ''}
-🛡️ DEALERSHIP GUARANTEE:
-✅ 100% Not Flooded & Clean Titles
-✅ Complete Original Documents (OR/CR)
-✅ Trade-In & Bank Financing Assistance Provided
+${unit.description_notes ? `\n📝 VEHICLE CONDITION & NOTES:\n${unit.description_notes}\n` : ''}
+🛡️ DEALERSHIP ASSURANCES:
+✅ Guaranteed 100% Flood-Free
+✅ Clean Legal Documents & LTO Verified
+✅ Ready for Long Drive & Complete Inspection
+✅ Bank Financing & Trade-In Assistance Provided
 
-📞 MESSAGE US FOR COMPUTATION:
+📞 MESSAGE US FOR ASSISTANCE:
 • Globe / Viber / WhatsApp: 0917 440 3909
 • Smart / Sun: 0923 730 9644
 📍 Google Maps Link: https://maps.app.goo.gl/JFw6ufXYTxyfvWHk8`;
@@ -155,13 +156,13 @@ export default function FbMarketplaceKitModal({
   const seoTags = generateSeoTags(unit);
 
   const handleCopy = async (text: string, key: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
+    const success = await copyToClipboard(text);
+    if (success) {
       setCopiedKey(key);
       setTimeout(() => {
         setCopiedKey(null);
       }, 2000);
-    } catch {
+    } else {
       alert('Failed to copy to clipboard.');
     }
   };

@@ -174,18 +174,14 @@ function PhotoManagerDialog({
     try {
       const supabase = createClient();
 
-      // Delete file from Supabase Storage and verify confirmed removal
+      // Delete file from Supabase Storage (if file exists in bucket)
       if (photo.storage_path) {
-        const { data: removedData, error: storageError } = await supabase.storage
+        const { error: storageError } = await supabase.storage
           .from('vehicle-photos')
           .remove([photo.storage_path]);
 
         if (storageError) {
           throw new Error(`Failed to remove file from storage: ${storageError.message}`);
-        }
-
-        if (!removedData || removedData.length === 0) {
-          throw new Error(`Storage did not confirm removal of ${photo.storage_path}`);
         }
       }
 
