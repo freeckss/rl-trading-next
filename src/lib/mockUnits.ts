@@ -23,6 +23,7 @@ export const mockVehicleUnits: VehicleUnit[] = [
     description_notes:
       'First owner, top-of-the-line Conquest variant in Nebula Blue Metallic. Complete service records, thick tires, roller lid bed cover, cold dual AC, 100% not flooded.',
     created_at: '2026-10-15T09:30:00Z',
+    updated_at: '2026-10-15T09:30:00Z',
     images: [
       {
         id: 'img-hilux-1',
@@ -64,6 +65,7 @@ export const mockVehicleUnits: VehicleUnit[] = [
     description_notes:
       'Executive luxury sedan with silky smooth 2.5L V6 engine. Full leather upholstery, sunroof, power seats, cold climate control. Flawless ride and quiet cabin.',
     created_at: '2026-10-20T11:00:00Z',
+    updated_at: '2026-10-20T11:00:00Z',
     images: [
       {
         id: 'img-teana-1',
@@ -97,6 +99,7 @@ export const mockVehicleUnits: VehicleUnit[] = [
     description_notes:
       'Highly economical daily commuter car. Dual VVT-i 1.3L engine, smooth CVT transmission, ice cold air conditioning, well-kept interior, complete LTO papers ready for transfer.',
     created_at: '2026-10-28T14:15:00Z',
+    updated_at: '2026-10-28T14:15:00Z',
     images: [
       {
         id: 'img-vios-1',

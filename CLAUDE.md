@@ -41,7 +41,7 @@ monthly48 = approvedLoan * 0.03483; // 48 months (4 years)
   - `src/components/`: Reusable React components
   - `src/lib/`: Business logic, calculators, client utilities, mock data
   - `src/types/`: Centralized TypeScript interfaces and database types
-- **Client-Side Media**: All images must be compressed client-side to WebP (~100KB) before uploading to Supabase Storage.
+- **Client-Side Media**: All images must be compressed client-side to WebP (~100KB–160KB) before uploading to Supabase Storage.
 
 ## Verification Commands
 Before completing any stage or committing, always verify:

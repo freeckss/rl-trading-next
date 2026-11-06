@@ -1,0 +1,376 @@
+import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { getAvailableUnits, getUnitByIdOrSlug } from '@/lib/services/vehicleService';
+import { formatPHP } from '@/lib/calculator';
+import PhotoGallery from '@/components/PhotoGallery';
+import CopyInquiryButton from '@/components/CopyInquiryButton';
+import {
+  Car,
+  ChevronLeft,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  CheckCircle2,
+  Tag,
+  Clock,
+  ExternalLink,
+  HelpCircle,
+} from 'lucide-react';
+
+interface VehicleDetailPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+function getCodingDay(plateEnding: string): string {
+  const lastDigit = plateEnding.trim().slice(-1);
+  switch (lastDigit) {
+    case '1':
+    case '2':
+      return 'Monday';
+    case '3':
+    case '4':
+      return 'Tuesday';
+    case '5':
+    case '6':
+      return 'Wednesday';
+    case '7':
+    case '8':
+      return 'Thursday';
+    case '9':
+    case '0':
+      return 'Friday';
+    default:
+      return 'N/A';
+  }
+}
+
+export async function generateStaticParams() {
+  const units = await getAvailableUnits();
+  return units.map((u) => ({ slug: u.slug }));
+}
+
+export async function generateMetadata({ params }: VehicleDetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const unit = await getUnitByIdOrSlug(slug);
+
+  if (!unit) {
+    return {
+      title: 'Vehicle Not Found | RL Trading & SEat n Go',
+      description: 'The requested pre-owned vehicle listing could not be found.',
+    };
+  }
+
+  const title = `${unit.year} ${unit.make} ${unit.model} ${unit.variant} | RL Trading Angeles City`;
+  const primaryPhoto = unit.images && unit.images.length > 0 ? unit.images[0].image_url : undefined;
+  const dpText =
+    unit.default_all_in_dp > 0 ? ` | Target All-In DP: ${formatPHP(unit.default_all_in_dp)}` : '';
+  const description = `Cash Price: ${formatPHP(unit.cash_price)}${dpText} • ${unit.transmission} • ${unit.fuel} • ${unit.mileage.toLocaleString('en-US')} km • Plate Ending ${unit.plate_ending}. Available at RL Trading & SEat n Go, MacArthur Hwy, Pulung Bulu, Angeles City, Pampanga.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      images: primaryPhoto
+        ? [
+            {
+              url: primaryPhoto,
+              width: 1200,
+              height: 800,
+              alt: `${unit.year} ${unit.make} ${unit.model}`,
+            },
+          ]
+        : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: primaryPhoto ? [primaryPhoto] : [],
+    },
+  };
+}
+
+async function VehicleDetailContent({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const unit = await getUnitByIdOrSlug(slug);
+
+  if (!unit) {
+    notFound();
+  }
+
+  const title = `${unit.year} ${unit.make} ${unit.model}`;
+  const codingDay = getCodingDay(unit.plate_ending);
+
+  return (
+    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-24 md:pb-12 selection:bg-amber-500 selection:text-black">
+      {/* Top Header / Breadcrumb Navigation */}
+      <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-300 hover:text-amber-400 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back to All Showroom Units</span>
+          </Link>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="hidden sm:inline-block text-zinc-500">RL Trading & SEat n Go</span>
+            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {unit.status}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full flex-1">
+        {/* Title & Headline on Mobile / Desktop */}
+        <div className="mb-6">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500 text-black">
+              {unit.year}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+              {unit.body_type}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+              Coding: {codingDay} (Ending {unit.plate_ending})
+            </span>
+          </div>
+
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+            {title}
+          </h1>
+          <p className="text-sm sm:text-base text-zinc-400 mt-1 font-medium">{unit.variant}</p>
+        </div>
+
+        {/* 2-Column Layout: Photo Gallery (Left) & Pricing / Inquiries (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: 40-Photo Gallery & Vehicle Description */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+            {/* Multi-Photo Gallery with Full-Screen Lightbox */}
+            <PhotoGallery images={unit.images} unitTitle={`${title} ${unit.variant}`} />
+
+            {/* Complete Specifications Grid */}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Tag className="w-4 h-4 text-amber-400" />
+                <span>Vehicle Specifications</span>
+              </h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <span className="text-zinc-500 block mb-0.5">Transmission</span>
+                  <span className="font-semibold text-zinc-200">{unit.transmission}</span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <span className="text-zinc-500 block mb-0.5">Fuel Type</span>
+                  <span className="font-semibold text-zinc-200">{unit.fuel}</span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <span className="text-zinc-500 block mb-0.5">Odometer Mileage</span>
+                  <span className="font-semibold text-zinc-200">
+                    {unit.mileage.toLocaleString('en-US')} km
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <span className="text-zinc-500 block mb-0.5">Body Configuration</span>
+                  <span className="font-semibold text-zinc-200">{unit.body_type}</span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <span className="text-zinc-500 block mb-0.5">Plate Ending</span>
+                  <span className="font-semibold text-zinc-200">
+                    {unit.plate_ending} ({codingDay})
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                  <span className="text-zinc-500 block mb-0.5">Unit Status</span>
+                  <span className="font-semibold text-emerald-400">{unit.status}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Dealer Notes & Vehicle Description */}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-3">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Car className="w-4 h-4 text-amber-400" />
+                <span>Condition & Dealer Notes</span>
+              </h2>
+
+              <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
+                {unit.description_notes ||
+                  'Thoroughly inspected, tested in Angeles City, ready for immediate transfer with complete documents.'}
+              </p>
+
+              <div className="pt-3 border-t border-zinc-800 flex flex-wrap gap-4 text-xs text-zinc-400">
+                <span className="flex items-center gap-1.5 text-zinc-300">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Verified 100% Not Flooded</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Clean Legal Title & Documents</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-zinc-300">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Original LTO Registration</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Pricing Card, Custom Financing Note & Inquiries */}
+          <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-20">
+            {/* Primary Pricing Card */}
+            <div className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-zinc-950 p-6 space-y-5 shadow-2xl">
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Dealership Cash Price
+                </span>
+                <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                  {formatPHP(unit.cash_price)}
+                </div>
+              </div>
+
+              {unit.default_all_in_dp > 0 && (
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                  <span className="text-xs font-medium text-amber-400/90 block">
+                    Target All-In Downpayment:
+                  </span>
+                  <div className="text-2xl font-bold text-amber-400">
+                    {formatPHP(unit.default_all_in_dp)}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 pt-1 leading-snug">
+                    *Includes estimated bank processing fee and unit downpayment. Subject to bank approval.
+                  </p>
+                </div>
+              )}
+
+              {/* Flexible Financing Notice */}
+              <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-xs space-y-1 text-zinc-400">
+                <div className="font-semibold text-zinc-200 flex items-center gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Flexible Bank Financing Available</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  We work with major Philippine auto financing banks (24, 36, or 48 months terms). Message us for a personalized monthly amortization computation matching your target downpayment.
+                </p>
+              </div>
+
+              {/* Copy Inquiry Details Button */}
+              <CopyInquiryButton unit={unit} />
+
+              {/* Direct Call & Message Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <a
+                  href="tel:09237309644"
+                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-950/40"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Call Smart</span>
+                </a>
+                <a
+                  href="tel:09174403909"
+                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-950/40"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Call Globe</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Showroom Location & Visiting Hours Card */}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-4 text-xs">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-amber-400" />
+                <span>Showroom Location & Viewings</span>
+              </h3>
+
+              <div className="space-y-1.5 text-zinc-300 leading-relaxed">
+                <p className="font-semibold text-white">RL Trading & SEat n Go Shuttle Services</p>
+                <p className="text-zinc-400">
+                  MacArthur Highway, Pulung Bulu, Angeles City, Pampanga
+                </p>
+                <p className="text-zinc-500 text-[11px]">
+                  Landmark: Beside Shell Gas Station, directly in front of Motech Auto Center.
+                </p>
+              </div>
+
+              <div className="space-y-1 pt-2 border-t border-zinc-800/80 text-zinc-400">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                  <span>Monday – Saturday: 8:00 AM – 6:00 PM</span>
+                </div>
+                <div className="text-zinc-500 pl-5 text-[11px]">
+                  Sunday viewings available by appointment.
+                </div>
+              </div>
+
+              <a
+                href="https://maps.app.goo.gl/JFw6ufXYTxyfvWHk8"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2.5 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors border border-zinc-700"
+              >
+                <span>Open in Google Maps</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky Mobile Bottom Action Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-800 p-3 shadow-2xl flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-[11px] text-zinc-400 block truncate">Cash Price:</span>
+          <span className="text-base font-bold text-white truncate block">
+            {formatPHP(unit.cash_price)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="tel:09237309644"
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-md"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Call Dealership</span>
+          </a>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function VehicleDetailSkeleton() {
+  return (
+    <div className="min-h-screen bg-zinc-950 p-6 max-w-7xl mx-auto space-y-6 animate-pulse">
+      <div className="h-8 w-48 bg-zinc-900 rounded-lg" />
+      <div className="h-12 w-96 bg-zinc-900 rounded-lg" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 xl:col-span-8 aspect-[16/10] bg-zinc-900 rounded-2xl" />
+        <div className="lg:col-span-5 xl:col-span-4 h-96 bg-zinc-900 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
+export default function VehicleDetailPage({ params }: VehicleDetailPageProps) {
+  return (
+    <Suspense fallback={<VehicleDetailSkeleton />}>
+      <VehicleDetailContent params={params} />
+    </Suspense>
+  );
+}
